@@ -1,0 +1,104 @@
+name: proyecto-cripto
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres-cripto
+    env_file: .env
+    ports:
+      - "${POSTGRES_PORT_HOST}:${POSTGRES_PORT}"
+    volumes:
+      - datos_postgres_cripto:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - datanet
+
+  ingesta:
+    build: ./ingesta
+    container_name: ingesta-cripto
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - datanet
+
+  adminer:
+    image: adminer:latest
+    container_name: adminer-cripto
+    ports:
+      - "${ADMINER_PORT_HOST}:8080"
+    depends_on:
+      - postgres
+    networks:
+      - datanet
+
+  dbt:
+    build: ./dbt
+    container_name: dbt-cripto
+    env_file: .env
+    ports:
+      - "${DBT_PORT_HOST}:8080"
+    volumes:
+      - dbt_target:/usr/app/cripto_dbt/target
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - datanet
+
+  airflow-db:
+    image: postgres:16
+    container_name: airflow-db-cripto
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - datos_airflow_db:/var/lib/postgresql/data
+    networks:
+      - datanet
+
+  airflow:
+    build: ./airflow
+    container_name: airflow-cripto
+    user: "${AIRFLOW_UID}:0"
+    group_add:
+      - "981"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
+    ports:
+      - "${AIRFLOW_PORT_HOST}:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/opt/proyecto_cripto
+    depends_on:
+      - airflow-db
+    networks:
+      - datanet
+    command: >
+      bash -c "rm -f /opt/airflow/airflow-webserver.pid &&
+      airflow db init &&
+      airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com;
+      airflow webserver & airflow scheduler"
+
+
+volumes:
+  datos_postgres_cripto:
+  dbt_target:
+  datos_airflow_db:
+
+networks:
+  datanet:
+    driver: bridge

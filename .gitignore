@@ -1,0 +1,14 @@
+# Airflow
+airflow/logs/*
+!airflow/logs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+
+# DBT
+dbt_target/
+target/
+
+# Entorno
+.env

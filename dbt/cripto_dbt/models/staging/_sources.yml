@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    description: "Datos crudos insertados por el contenedor de ingesta, sin transformar."
+    tables:
+      - name: precios_cripto
+        description: "Una fila por precio insertado (Job 1 y Job 2)."
+        columns:
+          - name: id
+            description: "PK autoincremental."
+          - name: moneda
+            description: "Nombre de la criptomoneda tal como llega de la API."
+          - name: precio_usd
+            description: "Precio en USD tal como llega de la API, sin redondear."
+          - name: fecha
+            description: "Momento en que se insertó la fila (dato técnico)."

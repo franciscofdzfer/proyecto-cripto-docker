@@ -1,0 +1,8 @@
+CREATE SCHEMA IF NOT EXISTS RAW;
+
+CREATE TABLE IF NOT EXISTS RAW.precios_cripto (
+    id SERIAL PRIMARY KEY,
+    moneda VARCHAR(20),
+    precio_usd NUMERIC,
+    fecha TIMESTAMP DEFAULT NOW()
+);
